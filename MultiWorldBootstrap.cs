@@ -22,12 +22,11 @@
  * SOFTWARE.
  */
 
-
-using System.Reflection;
 #if !UNITY_DISABLE_AUTOMATIC_SYSTEM_BOOTSTRAP
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Unity.Entities;
 using UnityEngine;
 
