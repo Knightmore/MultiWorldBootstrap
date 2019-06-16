@@ -237,7 +237,7 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
 
             }
 
-            if (World.Active.Name == customWorld.World.Name) return;
+            if (World.Active.Name == customWorld.World.Name) continue;
             World.Active.GetOrCreateSystem<InitializationSystemGroup>().AddSystemToUpdateList(customWorld.World.GetOrCreateSystem<InitializationSystemGroup>());
             World.Active.GetOrCreateSystem<SimulationSystemGroup>().AddSystemToUpdateList(customWorld.World.GetOrCreateSystem<SimulationSystemGroup>());
             World.Active.GetOrCreateSystem<PresentationSystemGroup>().AddSystemToUpdateList(customWorld.World.GetOrCreateSystem<PresentationSystemGroup>());
