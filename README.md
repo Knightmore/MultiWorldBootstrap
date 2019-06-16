@@ -63,7 +63,7 @@ public Bootstrap()
 
 ---
 ### Duplicating 
-To use unitys default systems the custom worlds need to know which they should add. 
+To use unitys default systems the custom worlds need to know in which namespace they are. 
 This example adds the hybrid renderer, physics and transforms:
 ```csharp
 public Bootstrap()
