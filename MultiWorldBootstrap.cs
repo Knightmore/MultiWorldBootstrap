@@ -91,9 +91,6 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
     {
         if (hasRun) return DefaultSystems;
 
-        Debug.Log(nameof(ComponentSystemGroup));
-        Debug.Log(nameof(SimulationSystemGroup));
-
         GetCustomWorldData(systems);
 
         AddAdditionalSystemsAndGroups(systems);
