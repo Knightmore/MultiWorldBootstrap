@@ -212,7 +212,6 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
     /// <summary>
     /// Creating each world with their assigned systems
     /// </summary>
-    // TODO: TRY TO REWRITE IN LINQ
     public void BuildWorlds()
     {
         foreach (CustomWorld customWorld in CustomWorlds)
