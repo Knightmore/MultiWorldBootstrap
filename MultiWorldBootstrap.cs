@@ -37,7 +37,7 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
     /// </summary>
     public List<CustomWorld> CustomWorlds { get; set; } = new List<CustomWorld>();
 
-    private List<Type> DefaultSystems { get; }= new List<Type>();
+    private List<Type> DefaultSystems { get; } = new List<Type>();
 
     private static bool hasRun;
 
@@ -89,7 +89,7 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
 
     public List<Type> Initialize(List<Type> systems)
     {
-        if (hasRun) return DefaultSystems;
+        if (hasRun) return systems;
 
         GetCustomWorldData(systems);
 
@@ -204,7 +204,6 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
                     break;
                 }
             }
-
             customWorld.SystemsToCreate.AddRange(recursiveGroupList.Distinct().ToList());
         }
     }
