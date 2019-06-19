@@ -5,6 +5,7 @@ In its current version, it needs the `DefaultWorldInitialization` to be activate
 *(This means you can not use `UNITY_DISABLE_AUTOMATIC_SYSTEM_BOOTSTRAP`)*
 ```
 Tested with Unity 2019.1.5f1 up to 2019.3.0a5
+Tested with Entities package up to 0.0.12 preview.33
 ```
 
 ## Usage
