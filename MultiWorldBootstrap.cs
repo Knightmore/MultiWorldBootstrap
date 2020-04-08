@@ -1,7 +1,7 @@
-﻿/*
+/*
  * MIT License
  * 
- * Copyright (c) 2019 Patrick Borger
+ * Copyright (c) 2019-2020 Patrick Borger
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,10 +23,10 @@
  */
 
 #if !UNITY_DISABLE_AUTOMATIC_SYSTEM_BOOTSTRAP
+using System.Reflection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Unity.Entities;
 using UnityEngine;
 
@@ -40,7 +40,7 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
     private List<Type> DefaultSystems { get; } = new List<Type>();
 
     private static bool hasRun;
-
+    
     public class CustomWorld
     {
         /// <summary>
@@ -60,10 +60,15 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
 
         /// <summary>
         /// Namespaces of systems which will be duplicated into custom World
-        /// Can be used for e.g. HybridRenderer, Physics, etc.
+        /// Can be used for e.g. Unity.Transforms, Unity.Physics, etc.
         /// </summary>
         public List<string> SystemNamespaceToDuplicate = new List<string>();
-        //public Func<List<Type>, List<Type>> DefaultSystemsToDuplicate;
+        
+        /// <summary>
+        /// Substrings of systems which will be duplicated into custom World
+        /// Can be used for e.g. CommandBuffer
+        /// </summary>
+        public List<string> SystemSubstringToDuplicate = new List<string>();
 
         /// <summary>
         /// Self created systems which will be added to the custom world
@@ -87,29 +92,35 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
         }
     }
 
-    public List<Type> Initialize(List<Type> systems)
+    public bool Initialize(string defaultWorldName)
     {
-        if (hasRun) return systems;
+        if (hasRun) return true;
 
-        GetCustomWorldData(systems);
+        DefaultSystems.AddRange(DefaultWorldInitialization.GetAllSystems(WorldSystemFilterFlags.Default).ToList());
+        
+        World defaultWorld = new World(defaultWorldName);
+        World.DefaultGameObjectInjectionWorld = defaultWorld;
+        DefaultWorldInitialization.AddSystemsToRootLevelSystemGroups(defaultWorld, DefaultSystems);
+        
+        GetCustomWorldData(DefaultSystems);
 
-        AddAdditionalSystemsAndGroups(systems);
+        AddAdditionalSystemsAndGroups(DefaultSystems);
 
         BuildWorlds();
 
         CustomWorlds.ForEach(customWorld => customWorld.SystemsToCreate.ForEach(type => (customWorld.World.GetExistingSystem(type) as ComponentSystemGroup)?.SortSystemUpdateList()));
 
-        (World.Active.GetOrCreateSystem(typeof(InitializationSystemGroup)) as ComponentSystemGroup)?.SortSystemUpdateList();
-        (World.Active.GetOrCreateSystem(typeof(SimulationSystemGroup)) as ComponentSystemGroup)?.SortSystemUpdateList();
-        (World.Active.GetOrCreateSystem(typeof(PresentationSystemGroup)) as ComponentSystemGroup)?.SortSystemUpdateList();
-
-        DefaultSystems.AddRange(systems);
-
+        (World.DefaultGameObjectInjectionWorld.GetOrCreateSystem(typeof(InitializationSystemGroup)) as ComponentSystemGroup)?.SortSystemUpdateList();
+        (World.DefaultGameObjectInjectionWorld.GetOrCreateSystem(typeof(SimulationSystemGroup)) as ComponentSystemGroup)?.SortSystemUpdateList();
+        (World.DefaultGameObjectInjectionWorld.GetOrCreateSystem(typeof(PresentationSystemGroup)) as ComponentSystemGroup)?.SortSystemUpdateList();
+        
         CustomWorlds.ForEach(customWorld => customWorld.CustomSystemsToAdd.ForEach(type => DefaultSystems.Remove(type)));
+        
+        ScriptBehaviourUpdateOrder.UpdatePlayerLoop(defaultWorld);            
         
         hasRun = true;
 
-        return DefaultSystems;
+        return true;
     }
 
     /// <summary>
@@ -133,7 +144,6 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
                         worldExists = true;
                         break;
                     }
-
                     if (worldExists) continue;
                     CustomWorld newCustomWorld = new CustomWorld(tempWorldName);
                     newCustomWorld.CustomSystemsToAdd.Add(system);
@@ -149,6 +159,7 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
             {
                 if (system.GetInterfaces().Where(systemInterface => customWorld.SystemInterfaces.Contains(systemInterface)).TakeWhile(x => !customWorld.CustomSystemsToAdd.Contains(system)).Any())
                 {
+                    
                     customWorld.CustomSystemsToAdd.Add(system);
                 }
             }
@@ -163,12 +174,18 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
         foreach (CustomWorld customWorld in CustomWorlds)
         {
             customWorld.SystemsToCreate.AddRange(customWorld.CustomSystemsToAdd);
-            if (customWorld.SystemNamespaceToDuplicate.Count > 0)
+            if (customWorld.SystemNamespaceToDuplicate.Count > 0 || customWorld.SystemSubstringToDuplicate.Count > 0)
             {
                 foreach (string systemNamespace in customWorld.SystemNamespaceToDuplicate)
                 {
                     customWorld.SystemsToCreate.AddRange(systems.FindAll(x => x.Namespace != null && x.Namespace.StartsWith(systemNamespace)));
                     customWorld.DuplicatedSystems.AddRange(systems.FindAll(x => x.Namespace != null && x.Namespace.StartsWith(systemNamespace)));
+                }
+                
+                foreach (string systemSubstring in customWorld.SystemSubstringToDuplicate)
+                {
+                    customWorld.SystemsToCreate.AddRange(systems.FindAll(x => x.FullName   != null && x.FullName.Contains(systemSubstring)));
+                    customWorld.DuplicatedSystems.AddRange(systems.FindAll(x => x.FullName != null && x.FullName.Contains(systemSubstring)));
                 }
                 customWorld.SystemsToCreate = customWorld.SystemsToCreate.Distinct().ToList();
             }
@@ -204,6 +221,7 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
                     break;
                 }
             }
+
             customWorld.SystemsToCreate.AddRange(recursiveGroupList.Distinct().ToList());
         }
     }
@@ -235,10 +253,10 @@ public abstract class MultiWorldBootstrap : ICustomBootstrap
 
             }
 
-            if (World.Active.Name == customWorld.World.Name) continue;
-            World.Active.GetOrCreateSystem<InitializationSystemGroup>().AddSystemToUpdateList(customWorld.World.GetOrCreateSystem<InitializationSystemGroup>());
-            World.Active.GetOrCreateSystem<SimulationSystemGroup>().AddSystemToUpdateList(customWorld.World.GetOrCreateSystem<SimulationSystemGroup>());
-            World.Active.GetOrCreateSystem<PresentationSystemGroup>().AddSystemToUpdateList(customWorld.World.GetOrCreateSystem<PresentationSystemGroup>());
+            if (World.DefaultGameObjectInjectionWorld.Name == customWorld.World.Name) continue;
+            World.DefaultGameObjectInjectionWorld.GetOrCreateSystem<InitializationSystemGroup>().AddSystemToUpdateList(customWorld.World.GetOrCreateSystem<InitializationSystemGroup>());
+            World.DefaultGameObjectInjectionWorld.GetOrCreateSystem<SimulationSystemGroup>().AddSystemToUpdateList(customWorld.World.GetOrCreateSystem<SimulationSystemGroup>());
+            World.DefaultGameObjectInjectionWorld.GetOrCreateSystem<PresentationSystemGroup>().AddSystemToUpdateList(customWorld.World.GetOrCreateSystem<PresentationSystemGroup>());
         }
     }
 }

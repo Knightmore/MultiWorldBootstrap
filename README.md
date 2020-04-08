@@ -1,11 +1,12 @@
+
 # MultiWorldBootstrap
 
 This is a ICustomBootstrap Extension for automatic multiple world creation. 
 In its current version, it needs the `DefaultWorldInitialization` to be activated. 
 *(This means you can not use `UNITY_DISABLE_AUTOMATIC_SYSTEM_BOOTSTRAP`)*
 ```
-Tested with Unity 2019.1.5f1 up to 2019.3.0a5
-Tested with Entities package up to 0.0.12 preview.33
+Tested with Unity 2019.3.8f1
+Tested with Entities package 0.8.0-preview.8
 ```
 
 ## Usage
@@ -64,8 +65,10 @@ public Bootstrap()
 
 ---
 ### Duplicating 
-To use unitys default systems the custom worlds need to know in which namespace they are. 
-This example adds the hybrid renderer, physics and transforms:
+There are two ways to use unitys default systems :
+
+##### 1. Based on namespace 
+This example adds the hybrid renderer, physics and transforms through their namespace:
 ```csharp
 public Bootstrap()
     {
@@ -75,7 +78,17 @@ public Bootstrap()
                          });
     }
 ```
-
+##### 2. Based on fullname 
+This example adds all default commandbuffers:
+```csharp
+public Bootstrap()
+    {
+        CustomWorlds.Add(new CustomWorld("TestWorld1")
+                         {
+                            SystemSubstringToDuplicate = new List<string>{ "CommandBuffer"} 
+                         });
+    }
+```
 ---
 ### Update order
 Setting up in which order the systems will be updated hasn't changed from Unitys default behaviour.
